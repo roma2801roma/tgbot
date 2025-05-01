@@ -627,7 +627,8 @@ def health_check():
 
 def run_flask():
     app_flask.run(host='0.0.0.0', port=8080)
-    
+async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(f"📥 Получен update: {update}")    
 if __name__ == '__main__':
     app = Application.builder().token(TOKEN).build()
 
