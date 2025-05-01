@@ -620,6 +620,7 @@ async def public_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     app = Application.builder().token(TOKEN).build()
 
+    # Регистрация обработчиков (ВСЕГДА ДО run_polling!)
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
     app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
@@ -627,22 +628,11 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search))
 
-from flask import Flask
-import threading
-
-app_flask = Flask(__name__)
-
-@app_flask.route('/')
-def health_check():
-    return "Bot is running", 200
-
-def run_flask():
-    app_flask.run(host='0.0.0.0', port=8080)
-    # Запуск Flask в отдельном потоке
+    # Flask для Render Health Check
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
     
-    # Запуск бота
+    # Запуск бота (после ВСЕХ настроек)
     print("Бот запущен...")
     app.run_polling()
 
