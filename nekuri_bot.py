@@ -628,38 +628,47 @@ if __name__ == '__main__':
     from telegram.ext import ApplicationBuilder
     import asyncio
     
-    # Создаем и настраиваем приложение
-    app = ApplicationBuilder().token(TOKEN).build()
+    # Создаем отдельную функцию для настройки вебхука
+    async def setup_webhook():
+        app = ApplicationBuilder().token(TOKEN).build()
+        
+        # Регистрация обработчиков (оставляем как было)
+        app.add_handler(CommandHandler('start', start))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
+        app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
+        app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
+        app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
+        app.add_handler(CallbackQueryHandler(handle_buttons))
+        app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
+        app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
 
-    # Регистрация обработчиков (оставляем как было)
-    app.add_handler(CommandHandler('start', start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
-    app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
-    app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
-    app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
-    app.add_handler(CallbackQueryHandler(handle_buttons))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
-    app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
-
-    # Настройка Webhook
-    PORT = int(os.environ.get('PORT', 8080))
-    WEBHOOK_URL = f'https://nekuri-bot.onrender.com/{TOKEN}'
-    
-    # Упрощенный запуск без сложных манипуляций с event loop
-    async def setup():
+        # Настройка Webhook
+        PORT = int(os.environ.get('PORT', 8080))
+        WEBHOOK_URL = f'https://nekuri-bot.onrender.com/{TOKEN}'
+        
         await app.bot.delete_webhook()
         await app.bot.set_webhook(WEBHOOK_URL)
         logger.info(f"✅ Webhook установлен: {WEBHOOK_URL}")
-        
+
+        return app
+
+    # Основная функция запуска
+    async def main():
+        app = await setup_webhook()
         await app.run_webhook(
             listen="0.0.0.0",
-            port=PORT,
-            webhook_url=WEBHOOK_URL,
+            port=int(os.environ.get('PORT', 8080)),
+            webhook_url=f'https://nekuri-bot.onrender.com/{TOKEN}'
         )
 
-    # Запускаем напрямую в основном потоке
+    # Запускаем бота с обработкой ошибок
     try:
-        asyncio.run(setup())
-    except KeyboardInterrupt:
-        logger.info("Бот остановлен")
-
+        # Создаем новую event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main())
+    except Exception as e:
+        logger.error(f"Ошибка при запуске бота: {e}")
+    finally:
+        # Не закрываем loop, чтобы избежать ошибок
+        pass
