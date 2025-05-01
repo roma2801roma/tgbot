@@ -627,34 +627,39 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search))
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import threading
+from aiohttp import web
+import asyncio
 
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        self.wfile.write(b'Bot is running')
+async def health_check(request):
+    return web.Response(text="Bot is running")
 
-def run_health_check_server():
-    server = HTTPServer(('0.0.0.0', 8080), HealthCheckHandler)
+async def run_web_server():
+    app_web = web.Application()
+    app_web.add_routes([web.get('/', health_check)])
+    runner = web.AppRunner(app_web)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    await site.start()
     print("Health check server started on port 8080")
-    server.serve_forever()
+
+async def main():
+    # Запуск веб-сервера и бота параллельно
+    await asyncio.gather(
+        run_web_server(),
+        app.run_polling()
+    )
 
 if __name__ == '__main__':
-    # Запуск HTTP-сервера в отдельном потоке (с исправлением)
-    def run_server():
-        with HTTPServer(('0.0.0.0', 8080), HealthCheckHandler) as server:
-            print("Health check server started on port 8080")
-            server.serve_forever()
-
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
-
-    # Запуск бота
-    print("Бот запущен...")
-    app.run_polling()
+    # Настройка asyncio для работы с телеграм-ботом
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    try:
+        loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        pass
+    finally:
+        loop.close()
 
 
 
