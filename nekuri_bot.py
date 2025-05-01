@@ -124,7 +124,7 @@ async def show_stores(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from datetime import datetime, timedelta
 import os
 
-FEEDBACK_LOG_PATH = "/home/roman2801/nekuri_bot/feedback_log.json"
+FEEDBACK_LOG_PATH = "roma2801roma/tgbot/feedback_log.json"
 
 def load_feedback_log():
     if not os.path.exists(FEEDBACK_LOG_PATH):
