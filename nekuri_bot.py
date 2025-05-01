@@ -1,22 +1,21 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+frfrom telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import json
+import os
 from logging.handlers import RotatingFileHandler
-with open("/home/roman2801/nekuri_bot/store_full.json", "r", encoding="utf-8") as f:
-    stores_data = json.load(f)
-
 import logging
-# другие импорты...
 import zlib
 
-def get_city_hash(city_name):
-    """Преобразует название города в короткий хеш (CRC32)."""
-    return hex(zlib.crc32(city_name.encode('utf-8')))[2:]  # Пример: "гродно" → "a5b3c2d1"
-log_file = '/home/roman2801/nekuri_log.txt'
+# Загрузка данных магазинов
+with open("store_full.json", "r", encoding="utf-8") as f:
+    stores_data = json.load(f)
+
+# Настройка логгирования
+log_file = 'nekuri_log.txt'
 handler = RotatingFileHandler(
     log_file,
-    maxBytes=2*1024*1024,  # 2 MB (макс размер одного файла)
-    backupCount=3,         # Хранить 3 архивных файла
+    maxBytes=2*1024*1024,
+    backupCount=3,
     encoding='utf-8'
 )
 
@@ -29,9 +28,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("🚀 Бот запущен")
 
-# Токен бота
-TOKEN = 'TOKEN_TELEGRAM'
-
+# Токен бота из переменных окружения
+TOKEN = os.getenv('TOKEN_TELEGRAM')
+if not TOKEN:
+    logger.error("Токен бота не найден в переменных окружения!")
+    exit(1)
 # Структура с магазинами
 
 # Стартовое сообщение и главное меню
