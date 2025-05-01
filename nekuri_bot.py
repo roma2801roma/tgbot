@@ -6,6 +6,7 @@ from logging.handlers import RotatingFileHandler
 import logging
 import zlib
 import threading  # Добавьте эту строку!
+from flask import Flask  # И эту тоже, если еще нет
 
 # Загрузка данных магазинов
 with open("store_full.json", "r", encoding="utf-8") as f:
@@ -620,48 +621,42 @@ async def public_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await query.edit_message_text(f"Ошибка: {str(e)}")
         logger.error(f"Ошибка в public_back: {e}, callback_data: {query.data}")
+app_flask = Flask(__name__)
 
+@app_flask.route('/')
+def health_check():
+    return "Bot is running", 200
 
+def run_flask():
+    app_flask.run(host='0.0.0.0', port=8080)
 async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"📥 Получен update: {update}")    
 if __name__ == '__main__':
-    from telegram.ext import ApplicationBuilder
-    import asyncio
+    app = Application.builder().token(TOKEN).build()
+
+    # Регистрация обработчиков (ВСЕГДА ДО run_polling!)
+    app.add_handler(CommandHandler('start', start))
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.ChatType.PRIVATE,
+            public_city_search
+        ),
+        group=1
+    )
+    app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
+    app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
+    app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
+    app.add_handler(CallbackQueryHandler(handle_buttons))
+    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
+    app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
+
+    # Flask для Render Health Check
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
     
-    async def run_bot():
-        # Создаем приложение
-        app = ApplicationBuilder().token(TOKEN).build()
-        
-        # Регистрация обработчиков
-        app.add_handler(CommandHandler('start', start))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
-        app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
-        app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
-        app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
-        app.add_handler(CallbackQueryHandler(handle_buttons))
-        app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
-        app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
+    # Запуск бота (после ВСЕХ настроек)
+    print("Бот запущен...")
+    app.run_polling()
 
-        try:
-            # Пробуем запустить вебхук
-            PORT = int(os.environ.get('PORT', 8080))
-            WEBHOOK_URL = f'https://nekuri-bot.onrender.com/{TOKEN}'
-            
-            await app.bot.delete_webhook()
-            await app.bot.set_webhook(WEBHOOK_URL)
-            logger.info(f"Пытаюсь запустить вебхук: {WEBHOOK_URL}")
-            
-            await app.run_webhook(
-                listen="0.0.0.0",
-                port=PORT,
-                webhook_url=WEBHOOK_URL
-            )
-        except Exception as e:
-            logger.error(f"Ошибка вебхука: {e}. Переключаюсь на polling...")
-            await app.run_polling()
 
-    # Простой запуск без сложных манипуляций с loop
-    try:
-        asyncio.run(run_bot())
-    except Exception as e:
-        logger.error(f"Фатальная ошибка: {e}")
+
