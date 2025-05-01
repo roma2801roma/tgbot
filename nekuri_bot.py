@@ -627,20 +627,24 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search))
 
-from aiohttp import web
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
-async def handle(request):
-    return web.Response(text="Bot is running")
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'Bot is running')
 
-def run_web_server():
-    app_web = web.Application()
-    app_web.add_routes([web.get('/', handle)])
-    web.run_app(app_web, port=8080)
+def run_health_check_server():
+    server = HTTPServer(('0.0.0.0', 8080), HealthCheckHandler)
+    print("Health check server started on port 8080")
+    server.serve_forever()
 
 if __name__ == '__main__':
-    # Запуск HTTP-сервера в отдельном потоке
-    threading.Thread(target=run_web_server, daemon=True).start()
+    # Запуск HTTP-сервера для health checks
+    threading.Thread(target=run_health_check_server, daemon=True).start()
     
     # Запуск бота
     print("Бот запущен...")
