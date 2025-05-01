@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 logger.info("🚀 Бот запущен")
 
 # Токен бота
-TOKEN = '7549154782:AAHYVCVzt-VvuXLZhpnMwrcEc-38w5QNNX8'
+TOKEN = 'TOKEN_TELEGRAM'
 
 # Структура с магазинами
 
