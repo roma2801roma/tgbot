@@ -627,39 +627,26 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search))
 
-from aiohttp import web
-import asyncio
+from flask import Flask
+import threading
 
-async def health_check(request):
-    return web.Response(text="Bot is running")
+app_flask = Flask(__name__)
 
-async def run_web_server():
-    app_web = web.Application()
-    app_web.add_routes([web.get('/', health_check)])
-    runner = web.AppRunner(app_web)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
-    await site.start()
-    print("Health check server started on port 8080")
+@app_flask.route('/')
+def health_check():
+    return "Bot is running", 200
 
-async def main():
-    # Запуск веб-сервера и бота параллельно
-    await asyncio.gather(
-        run_web_server(),
-        app.run_polling()
-    )
+def run_flask():
+    app_flask.run(host='0.0.0.0', port=8080)
 
 if __name__ == '__main__':
-    # Настройка asyncio для работы с телеграм-ботом
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    # Запуск Flask в отдельном потоке
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
     
-    try:
-        loop.run_until_complete(main())
-    except KeyboardInterrupt:
-        pass
-    finally:
-        loop.close()
+    # Запуск бота
+    print("Бот запущен...")
+    app.run_polling()
 
 
 
