@@ -625,47 +625,38 @@ async def public_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"📥 Получен update: {update}")    
 if __name__ == '__main__':
-    app = Application.builder().token(TOKEN).build()
+    import asyncio
+    
+    async def main():
+        app = Application.builder().token(TOKEN).build()
 
-    # Регистрация обработчиков (ВСЕГДА ДО run_polling!)
-    app.add_handler(CommandHandler('start', start))
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.ChatType.PRIVATE,
-            public_city_search
-        ),
-        group=1
-    )
-    app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
-    app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
-    app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
-    app.add_handler(CallbackQueryHandler(handle_buttons))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
-    app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
+        # Регистрация обработчиков (как у вас было)
+        app.add_handler(CommandHandler('start', start))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
+        app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
+        app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
+        app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
+        app.add_handler(CallbackQueryHandler(handle_buttons))
+        app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
+        app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
 
-    # Настройка Webhook
-    PORT = int(os.environ.get('PORT', 8080))  # Render использует порт 8080 по умолчанию
-    WEBHOOK_BASE_URL = 'https://nekuri-bot.onrender.com'
-    WEBHOOK_PATH = f'/{TOKEN}'  # Важно: URL вебхука должен включать токен!
-    WEBHOOK_URL = WEBHOOK_BASE_URL + WEBHOOK_PATH
-
-    # Удаляем старый вебхук (на всякий случай) и устанавливаем новый
-    async def setup_webhook():
+        # Настройка Webhook
+        PORT = int(os.environ.get('PORT', 8080))
+        WEBHOOK_URL = f'https://nekuri-bot.onrender.com/{TOKEN}'
+        
         await app.bot.delete_webhook()  # Очистка старого вебхука
         await app.bot.set_webhook(WEBHOOK_URL)
-        logger.info(f"🔄 Вебхук установлен: {WEBHOOK_URL}")
+        logger.info(f"Webhook установлен: {WEBHOOK_URL}")
 
-    # Запуск (синхронно, так как Render не поддерживает async в главном потоке)
-    import asyncio
-    asyncio.run(setup_webhook())
+        # Запуск сервера для приёма вебхуков
+        await app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            webhook_url=WEBHOOK_URL,
+        )
 
-    # Запуск сервера для приёма вебхуков
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        webhook_url=WEBHOOK_URL,
-        secret_token=None,  # Можно добавить для безопасности
-    )
+    # Запуск асинхронного кода
+    asyncio.run(main())
 
 
 
