@@ -5,6 +5,8 @@ import os
 from logging.handlers import RotatingFileHandler
 import logging
 import zlib
+import threading  # Добавьте эту строку!
+from flask import Flask  # И эту тоже, если еще нет
 
 # Загрузка данных магазинов
 with open("store_full.json", "r", encoding="utf-8") as f:
