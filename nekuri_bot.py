@@ -629,37 +629,24 @@ if __name__ == '__main__':
 
 from flask import Flask
 import threading
-import requests
-import time
 
 app_flask = Flask(__name__)
 
 @app_flask.route('/')
-def home():
-    return "Bot is alive", 200
+def health_check():
+    return "Bot is running", 200
 
 def run_flask():
     app_flask.run(host='0.0.0.0', port=8080)
 
-def self_ping():
-    while True:
-        try:
-            requests.get("https://nekuri-bot.onrender.com")
-        except:
-            pass
-        time.sleep(300)
-
 if __name__ == '__main__':
+    # Запуск Flask в отдельном потоке
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
     
-    ping_thread = threading.Thread(target=self_ping, daemon=True)
-    ping_thread.start()
-    
+    # Запуск бота
     print("Бот запущен...")
     app.run_polling()
-
-
 
 
 
