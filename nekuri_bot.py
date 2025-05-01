@@ -627,10 +627,10 @@ async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     import asyncio
     
-    async def main():
+    def run_bot():
         app = Application.builder().token(TOKEN).build()
 
-        # Регистрация обработчиков (как у вас было)
+        # Регистрация обработчиков (оставляем как было)
         app.add_handler(CommandHandler('start', start))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
         app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
@@ -644,19 +644,26 @@ if __name__ == '__main__':
         PORT = int(os.environ.get('PORT', 8080))
         WEBHOOK_URL = f'https://nekuri-bot.onrender.com/{TOKEN}'
         
-        await app.bot.delete_webhook()  # Очистка старого вебхука
-        await app.bot.set_webhook(WEBHOOK_URL)
-        logger.info(f"Webhook установлен: {WEBHOOK_URL}")
+        # Создаем новую event loop для настройки вебхука
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Устанавливаем вебхук
+            loop.run_until_complete(app.bot.delete_webhook())
+            loop.run_until_complete(app.bot.set_webhook(WEBHOOK_URL))
+            logger.info(f"Webhook установлен: {WEBHOOK_URL}")
+            
+            # Запускаем сервер вебхука в основном потоке
+            app.run_webhook(
+                listen="0.0.0.0",
+                port=PORT,
+                webhook_url=WEBHOOK_URL,
+            )
+        finally:
+            loop.close()
 
-        # Запуск сервера для приёма вебхуков
-        await app.run_webhook(
-            listen="0.0.0.0",
-            port=PORT,
-            webhook_url=WEBHOOK_URL,
-        )
-
-    # Запуск асинхронного кода
-    asyncio.run(main())
+    run_bot()
 
 
 
