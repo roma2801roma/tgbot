@@ -6,7 +6,6 @@ from logging.handlers import RotatingFileHandler
 import logging
 import zlib
 import threading  # Добавьте эту строку!
-from flask import Flask  # И эту тоже, если еще нет
 
 # Загрузка данных магазинов
 with open("store_full.json", "r", encoding="utf-8") as f:
@@ -621,14 +620,8 @@ async def public_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await query.edit_message_text(f"Ошибка: {str(e)}")
         logger.error(f"Ошибка в public_back: {e}, callback_data: {query.data}")
-app_flask = Flask(__name__)
 
-@app_flask.route('/')
-def health_check():
-    return "Bot is running", 200
 
-def run_flask():
-    app_flask.run(host='0.0.0.0', port=8080)
 async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"📥 Получен update: {update}")    
 if __name__ == '__main__':
@@ -650,13 +643,29 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
     app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
 
-    # Flask для Render Health Check
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    
-    # Запуск бота (после ВСЕХ настроек)
-    print("Бот запущен...")
-    app.run_polling()
+    # Настройка Webhook
+    PORT = int(os.environ.get('PORT', 8080))  # Render использует порт 8080 по умолчанию
+    WEBHOOK_BASE_URL = 'https://nekuri-bot.onrender.com'
+    WEBHOOK_PATH = f'/{TOKEN}'  # Важно: URL вебхука должен включать токен!
+    WEBHOOK_URL = WEBHOOK_BASE_URL + WEBHOOK_PATH
+
+    # Удаляем старый вебхук (на всякий случай) и устанавливаем новый
+    async def setup_webhook():
+        await app.bot.delete_webhook()  # Очистка старого вебхука
+        await app.bot.set_webhook(WEBHOOK_URL)
+        logger.info(f"🔄 Вебхук установлен: {WEBHOOK_URL}")
+
+    # Запуск (синхронно, так как Render не поддерживает async в главном потоке)
+    import asyncio
+    asyncio.run(setup_webhook())
+
+    # Запуск сервера для приёма вебхуков
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url=WEBHOOK_URL,
+        secret_token=None,  # Можно добавить для безопасности
+    )
 
 
 
