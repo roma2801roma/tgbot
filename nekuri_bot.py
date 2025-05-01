@@ -532,9 +532,7 @@ async def public_city_search(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(f"🏙 Магазины в {city}:", reply_markup=reply_markup)
-    except Exception as e:
-        logger.error(f"Ошибка в public_city_search: {str(e)}")
-        await update.message.reply_text("⚠️ Произошла ошибка при обработке запроса")
+    
 async def public_store_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
