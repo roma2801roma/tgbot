@@ -643,9 +643,15 @@ def run_health_check_server():
     server.serve_forever()
 
 if __name__ == '__main__':
-    # Запуск HTTP-сервера для health checks
-    threading.Thread(target=run_health_check_server, daemon=True).start()
-    
+    # Запуск HTTP-сервера в отдельном потоке (с исправлением)
+    def run_server():
+        with HTTPServer(('0.0.0.0', 8080), HealthCheckHandler) as server:
+            print("Health check server started on port 8080")
+            server.serve_forever()
+
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+
     # Запуск бота
     print("Бот запущен...")
     app.run_polling()
