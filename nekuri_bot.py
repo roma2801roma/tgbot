@@ -508,6 +508,8 @@ import difflib
 
 async def public_city_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Получено сообщение в чате: {update.message.text}") 
+    print("🔥 PUBLIC CITY SEARCH TRIGGERED")
+    print(f"update: {update}")
     if update.effective_chat.type == "private":
         return
     
