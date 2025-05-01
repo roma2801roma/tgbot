@@ -628,23 +628,22 @@ if __name__ == '__main__':
     from telegram.ext import ApplicationBuilder
     import asyncio
     
-    # Создаем приложение
-    app = ApplicationBuilder().token(TOKEN).build()
-    
-    # Регистрация обработчиков (оставляем ваш текущий код)
-    app.add_handler(CommandHandler('start', start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
-    app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
-    app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
-    app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
-    app.add_handler(CallbackQueryHandler(handle_buttons))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
-    app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
-
-    # Автоматический выбор режима работы
     async def run_bot():
+        # Создаем приложение
+        app = ApplicationBuilder().token(TOKEN).build()
+        
+        # Регистрация обработчиков
+        app.add_handler(CommandHandler('start', start))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
+        app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
+        app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
+        app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
+        app.add_handler(CallbackQueryHandler(handle_buttons))
+        app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
+        app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
+
         try:
-            # Пробуем вебхук
+            # Пробуем запустить вебхук
             PORT = int(os.environ.get('PORT', 8080))
             WEBHOOK_URL = f'https://nekuri-bot.onrender.com/{TOKEN}'
             
@@ -661,8 +660,8 @@ if __name__ == '__main__':
             logger.error(f"Ошибка вебхука: {e}. Переключаюсь на polling...")
             await app.run_polling()
 
-    # Запуск с обработкой ошибок
+    # Простой запуск без сложных манипуляций с loop
     try:
         asyncio.run(run_bot())
     except Exception as e:
-        logger.error(f"Критическая ошибка: {e}")
+        logger.error(f"Фатальная ошибка: {e}")
