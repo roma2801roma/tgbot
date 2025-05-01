@@ -618,7 +618,15 @@ async def public_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await query.edit_message_text(f"Ошибка: {str(e)}")
         logger.error(f"Ошибка в public_back: {e}, callback_data: {query.data}")
+app_flask = Flask(__name__)
 
+@app_flask.route('/')
+def health_check():
+    return "Bot is running", 200
+
+def run_flask():
+    app_flask.run(host='0.0.0.0', port=8080)
+    
 if __name__ == '__main__':
     app = Application.builder().token(TOKEN).build()
 
