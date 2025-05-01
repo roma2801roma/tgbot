@@ -625,45 +625,31 @@ async def public_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"📥 Получен update: {update}")    
 if __name__ == '__main__':
+    from telegram.ext import ApplicationBuilder
     import asyncio
     
-    def run_bot():
-        app = Application.builder().token(TOKEN).build()
+    async def main():
+        app = ApplicationBuilder().token(TOKEN).build()
 
         # Регистрация обработчиков (оставляем как было)
         app.add_handler(CommandHandler('start', start))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
-        app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
-        app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
-        app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
-        app.add_handler(CallbackQueryHandler(handle_buttons))
-        app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
-        app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
+        # ... остальные обработчики ...
 
         # Настройка Webhook
         PORT = int(os.environ.get('PORT', 8080))
         WEBHOOK_URL = f'https://nekuri-bot.onrender.com/{TOKEN}'
         
-        # Создаем новую event loop для настройки вебхука
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        try:
-            # Устанавливаем вебхук
-            loop.run_until_complete(app.bot.delete_webhook())
-            loop.run_until_complete(app.bot.set_webhook(WEBHOOK_URL))
-            logger.info(f"Webhook установлен: {WEBHOOK_URL}")
-            
-            # Запускаем сервер вебхука в основном потоке
-            app.run_webhook(
-                listen="0.0.0.0",
-                port=PORT,
-                webhook_url=WEBHOOK_URL,
-            )
-        finally:
-            loop.close()
+        await app.bot.delete_webhook()
+        await app.bot.set_webhook(WEBHOOK_URL)
+        logger.info(f"Webhook установлен: {WEBHOOK_URL}")
 
-    run_bot()
+        await app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            webhook_url=WEBHOOK_URL,
+        )
 
+    asyncio.run(main())
 
 
