@@ -509,7 +509,7 @@ import difflib
 async def public_city_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private":
         return
-
+    logger.info(f"Получено сообщение в чате: {update.message.text}") 
     text = update.message.text.strip().lower()
     all_cities = {
         city.lower(): (region, city)
@@ -532,7 +532,9 @@ async def public_city_search(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(f"🏙 Магазины в {city}:", reply_markup=reply_markup)
-
+    except Exception as e:
+        logger.error(f"Ошибка в public_city_search: {str(e)}")
+        await update.message.reply_text("⚠️ Произошла ошибка при обработке запроса")
 async def public_store_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -632,6 +634,13 @@ if __name__ == '__main__':
 
     # Регистрация обработчиков (ВСЕГДА ДО run_polling!)
     app.add_handler(CommandHandler('start', start))
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.ChatType.PRIVATE,
+            public_city_search
+        ),
+        group=1
+    )
     app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
     app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
     app.add_handler(CallbackQueryHandler(handle_buttons))
