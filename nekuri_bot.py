@@ -627,61 +627,42 @@ async def log_all_updates(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     from telegram.ext import ApplicationBuilder
     import asyncio
-    import signal
+    
+    # Создаем приложение
+    app = ApplicationBuilder().token(TOKEN).build()
+    
+    # Регистрация обработчиков (оставляем ваш текущий код)
+    app.add_handler(CommandHandler('start', start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
+    app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
+    app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
+    app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
+    app.add_handler(CallbackQueryHandler(handle_buttons))
+    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
+    app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
 
-    class BotRunner:
-        def __init__(self):
-            self.app = None
-            self.loop = None
-
-        async def setup(self):
-            self.app = ApplicationBuilder().token(TOKEN).build()
-            
-            # Регистрация обработчиков
-            self.app.add_handler(CommandHandler('start', start))
-            self.app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search), group=1)
-            self.app.add_handler(MessageHandler(filters.ALL, log_all_updates), group=99)
-            self.app.add_handler(CallbackQueryHandler(public_store_info, pattern=r"^public_store_"))
-            self.app.add_handler(CallbackQueryHandler(public_back, pattern=r"^public_back_"))
-            self.app.add_handler(CallbackQueryHandler(handle_buttons))
-            self.app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
-            self.app.add_handler(MessageHandler(filters.TEXT & (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP), public_city_search))
-
-            # Настройка Webhook
+    # Автоматический выбор режима работы
+    async def run_bot():
+        try:
+            # Пробуем вебхук
             PORT = int(os.environ.get('PORT', 8080))
             WEBHOOK_URL = f'https://nekuri-bot.onrender.com/{TOKEN}'
             
-            await self.app.bot.delete_webhook()
-            await self.app.bot.set_webhook(WEBHOOK_URL)
-            logger.info(f"✅ Webhook установлен: {WEBHOOK_URL}")
-
-        async def run(self):
-            await self.app.run_webhook(
+            await app.bot.delete_webhook()
+            await app.bot.set_webhook(WEBHOOK_URL)
+            logger.info(f"Пытаюсь запустить вебхук: {WEBHOOK_URL}")
+            
+            await app.run_webhook(
                 listen="0.0.0.0",
-                port=int(os.environ.get('PORT', 8080)),
-                webhook_url=f'https://nekuri-bot.onrender.com/{TOKEN}'
+                port=PORT,
+                webhook_url=WEBHOOK_URL
             )
+        except Exception as e:
+            logger.error(f"Ошибка вебхука: {e}. Переключаюсь на polling...")
+            await app.run_polling()
 
-        def shutdown(self):
-            if self.loop:
-                self.loop.stop()
-
-    # Запуск бота
-    runner = BotRunner()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
+    # Запуск с обработкой ошибок
     try:
-        # Установка обработчиков сигналов
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, runner.shutdown)
-
-        # Запуск асинхронных задач
-        loop.run_until_complete(runner.setup())
-        loop.run_until_complete(runner.run())
+        asyncio.run(run_bot())
     except Exception as e:
-        logger.error(f"Ошибка при запуске бота: {e}")
-    finally:
-        if not loop.is_closed():
-            loop.close()
-        logger.info("Бот остановлен")
+        logger.error(f"Критическая ошибка: {e}")
