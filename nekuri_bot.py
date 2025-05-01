@@ -627,6 +627,22 @@ if __name__ == '__main__':
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_review_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.ChatType.PRIVATE, public_city_search))
 
+from aiohttp import web
+import threading
+
+async def handle(request):
+    return web.Response(text="Bot is running")
+
+def run_web_server():
+    app_web = web.Application()
+    app_web.add_routes([web.get('/', handle)])
+    web.run_app(app_web, port=8080)
+
+if __name__ == '__main__':
+    # Запуск HTTP-сервера в отдельном потоке
+    threading.Thread(target=run_web_server, daemon=True).start()
+    
+    # Запуск бота
     print("Бот запущен...")
     app.run_polling()
 
